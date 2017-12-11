@@ -14,6 +14,11 @@ image_opener = """HTTP/1.1 200 OK
 Content-Type: image/ico
 Connection: keep-alive
 Content-Length: {0}\r\n\r\n"""
+"""with open("saved_users") as file:
+    data = file.read().split("\n")
+saved_users = dict([a.split(chr(2500)) for a in data])
+res = subprocess.getoutput("arp -an").split("\n")
+ip_mac_table = {a.split(" ")[1][1:-1]:a.split(" ")[3] for a in res}"""
 users = {} # {addr:[timestamp,user_obj]}
 chatrooms = []
 user_number = 0
@@ -110,6 +115,11 @@ def handle_connection(clientsocket,addr):
     else:
         user = User(ip)
         print("New user with IP {0} and name {1}".format(ip,user.name))
+        try:
+            mac = ip_mac_table[ip]
+            user = saved_users[mac]
+        except BaseException:
+            pass
         users[ip] = [user,time.time()]
     test_chatroom.enter_chatroom(user)     # FOR THE MOMENT
     last_error = 0
