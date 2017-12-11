@@ -20,7 +20,17 @@ Content-Length: {0}\r\n\r\n"""
 saved_users = dict([a.split(chr(2500)) for a in data])
 res = subprocess.getoutput("arp -an").split("\n")
 ip_mac_table = {a.split(" ")[1][1:-1]:a.split(" ")[3] for a in res}"""
+help_message = """Available commands:
+/help - display this help message
+/username newusername - change name of user to newusername
+/auth password - attempt to authorize user as administrator
+
+For Admins Only:
+/ban user time - Ban user for specified number of seconds
+
+"""
 users = {} # {addr:[timestamp,user_obj]}
+banned_ips = {}
 chatrooms = []
 user_number = 0
 def get_random_name():
@@ -40,6 +50,7 @@ class User:
         self.read_queue = []
         self.active_chatrooms = []
         self.admin = False
+        self.unban_time = 0
     def send_message(self,message):
         self.read_queue.append(message)
     def get_readqueue(self,chatroom_name):
@@ -85,7 +96,8 @@ def handle_command(command,user,chatroom,*args):
     if command == "username":
         oldusername = user.name
         newusername = args[0]
-        chatroom.write_message(server,'User "{0}" is now known as "{1}"'.format(oldusername,newusername))
+        chatroom.write_message(server,'User "{0}" is now known as "{1}"'.\
+                               format(oldusername,newusername))
         user.name = newusername
     elif command == "auth":
         with open("password") as file:
@@ -96,9 +108,29 @@ def handle_command(command,user,chatroom,*args):
                                "server"])
         else:
             user.send_messages([time.time(),server,"Bad Password","server"])
+    elif command == "ban":
+        if not user.admin:
+            user.send_message([time.time(),server,"Not admin","server"])
+            return
+        username_to_ban = args[0]
+        user_to_ban = None
+        for ip in users:
+            user = users[ip][1]
+            if username_to_ban == user:
+                user_to_ban = user
+        if user_to_ban == None: # unable to find user
+            user.send_message([time.time(),server,"User {0} not found".\
+                                format(username_to_ban),"server"])
+            return
+        
+        user_to_ban.time_to_unban = time.time() + int(args[1])
+        banned_ips[user_to_ban.ip] = time.time() + int(args[1])
+    elif command == "help":
+        user.send_message([time.time(),server,help_message,"server"])
 def get_resource(resource,user,postdata=""):
     if postdata:        
-        print("{0} requested {1} with post data {2}".format(user.ip,resource,postdata))
+        print("{0} requested {1} with post data {2}".format(user.ip,\
+                                                            resource,postdata))
     else:
         print("{0} requested {1}".format(user.ip,resource))
     static_files = os.listdir()
@@ -115,14 +147,16 @@ def get_resource(resource,user,postdata=""):
             command = postdata[1:].split(" ")
             handle_command(command[0],user,chatroom,*command[1:])
             return ""
-        print('User wrote message "{0}" to chatroom "{1}"'.format(postdata,chatroom.name))
+        print('User wrote message "{0}" to chatroom "{1}"'.format(\
+            postdata,chatroom.name))
         chatroom.write_message(user,postdata)
         for ip, user in users.items():
             print("User {0} has readqueue {1}".format(ip,user[0].read_queue))
         return ''
     if resource[0] == "getmessages":
         chatroom_name = resource[1]
-        print('User "{0}" is polling chatroom "{1}"'.format(user.ip,chatroom_name))
+        print('User "{0}" is polling chatroom "{1}"'.format(user.ip,\
+                                                            chatroom_name))
         data = user.get_readqueue(chatroom_name)
         print('User "{0}" has a readqueue "{1}"'.format(user.ip,data))
         for a in data:
@@ -136,7 +170,15 @@ def handle_connection(clientsocket,addr):
         user = users[ip][0]
         print("Returning user: IP {0} and name {1}".format(ip,user.name))
         users[ip][1] = time.time() # timestamp last user appearance
+        if user.unban_time > time.time():
+            with open("banned.html") as file:
+                clientsocket.send(bytes(file.read().format(user.unban_time),\
+                                        'utf-8'))
+            return
     else:
+        if ip in banned_ips and banned_ips[ip] > time.time():
+            clientsocket.send(bytes(read_file("banned.html").format(banned_ips\
+                                                                    ),'utf-8'))
         user = User(ip)
         print("New user with IP {0} and name {1}".format(ip,user.name))
         try:
@@ -153,7 +195,8 @@ def handle_connection(clientsocket,addr):
         try:
             resource = request[0].split(" ")[1]
         except IndexError:
-            print("Failed to get resource from request \n{0}".format("\n".join(request)))
+            print("Failed to get resource from request \n{0}".\
+                  format("\n".join(request)))
             if (time.time() - last_error) < 1:
                 break
             last_error = time.time()
@@ -167,7 +210,8 @@ def handle_connection(clientsocket,addr):
         if request[0].split(" ")[0] == "POST": # post request
             content_length = int(request[3][16:]) # past content-length: 
             while len(request[-1]) < content_length:
-                request[-1] += str(clientsocket.recv(content_length-len(request[-1])),'utf-8')
+                request[-1] += str(clientsocket.recv(content_length-\
+                                                     len(request[-1])),'utf-8')
             response = get_resource(resource,user,request[-1])
         else: # get request
             response = get_resource(resource,user)
