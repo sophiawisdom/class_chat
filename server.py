@@ -6,6 +6,7 @@ import threading
 import os
 import select
 import subprocess
+import atexit
 text_opener = """HTTP/1.1 200 OK
 Content-Type: text
 Connection: keep-alive
@@ -26,6 +27,9 @@ def get_random_name():
     global user_number
     user_number += 1
     return "User {0}".format(user_number)
+def clean_up():
+    with open("current_port",'w') as file:
+        file.write("0")
 class User:
     def __init__(self,ip,name=""): # TODO: Deactivate user after inactivity?
         self.ip = ip
@@ -35,13 +39,14 @@ class User:
         self.previous_messages = []
         self.read_queue = []
         self.active_chatrooms = []
+        self.admin = False
     def send_message(self,message):
         self.read_queue.append(message)
     def get_readqueue(self,chatroom_name):
         relevant_messages = []
         toremove = []
         for message in self.read_queue:
-            if message[3] == chatroom_name:
+            if message[3] == chatroom_name or message[3] == "server":
                 relevant_messages.append(message)
                 toremove.append(message)
         for message in toremove:
@@ -76,21 +81,40 @@ def read_file(filename,options='r'):
     except FileNotFoundError as e:
         print("FileNotFoundError when looking for file {0}".format(filename))
         return ""
+def handle_command(command,user,chatroom,*args):
+    if command == "username":
+        oldusername = user.name
+        newusername = args[0]
+        chatroom.write_message(server,'User "{0}" is now known as "{1}"'.format(oldusername,newusername))
+        user.name = newusername
+    elif command == "auth":
+        with open("password") as file:
+            passwords = [a.replace(" ","") for a in file.read().split("\n")]
+        if args[0] in passwords:
+            user.admin = True
+            user.send_message([time.time(),server,"Authenticated as admin",\
+                               "server"])
+        else:
+            user.send_messages([time.time(),server,"Bad Password","server"])
 def get_resource(resource,user,postdata=""):
     if postdata:        
         print("{0} requested {1} with post data {2}".format(user.ip,resource,postdata))
     else:
         print("{0} requested {1}".format(user.ip,resource))
     static_files = os.listdir()
-    chatroom_names = [a.name for a in chatrooms]
     resource = resource[1:]
     if resource == "":
         resource = "index.html"
     if resource in static_files and not resource.endswith(".py"):
         return read_file(resource)
     resource = resource.split("/")
+    chatroom_names = [a.name for a in chatrooms]
+    chatroom = chatrooms[chatroom_names.index(resource[1])]
     if resource[0] == "postmessage": # trying to do some action on a chatroom
-        chatroom = chatrooms[chatroom_names.index(resource[1])]
+        if postdata.startswith("/"): # attempt at command
+            command = postdata[1:].split(" ")
+            handle_command(command[0],user,chatroom,*command[1:])
+            return ""
         print('User wrote message "{0}" to chatroom "{1}"'.format(postdata,chatroom.name))
         chatroom.write_message(user,postdata)
         for ip, user in users.items():
@@ -163,8 +187,8 @@ except BaseException:
             print("failed to bind to port {0}".format(n))
 print("Bound to port {0}".format(n))
 sock.listen(10)
+server = User("0.0.0.0","server")
 test_chatroom = Chatroom("test_chatroom")
-print('open -a "Google Chrome" http://localhost:{0}'.format(n))
 subprocess.getoutput('open -a "Google Chrome" http://localhost:{0}'.format(n))
 while 1:
     clientsocket, addr = sock.accept()
