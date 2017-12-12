@@ -30,11 +30,11 @@ def handle_command(command,user,chatroom,*args):
         oldusername = user.name
         newusername = args[0]
         for ip in users:
-            if users[ip][1].name == newusername:
+            if users[ip][0].name == newusername:
                 user.write_message(Message(server,'Username cannot be changed to {0} because there is already a user with that username'.
                     format(newusername),chatroom))
-        chatroom.write_message(server,'User "{0}" is now known as "{1}"'.\
-                               format(oldusername,newusername))
+        for chatroom in user.active_chatrooms:
+            chatroom.write_message(server,'User "{0}" is now known as "{1}"'.format(oldusername,newusername))
         user.name = newusername
 
     elif command == "auth":
@@ -70,7 +70,7 @@ def handle_command(command,user,chatroom,*args):
     elif command == "help":
         user.send_message([time.time(),server,help_message,"server"])
 
-def get_resource(resource,user,postdata=""):
+def get_resource(resource,user,method,postdata=""):
     resource = resource[1:] # Starts with /
     resource = resource if resource != "" else "index.html" # Static file
     if resource.split(".")[-1] in ['css','html','js']: # What's a more elegant way to say after the last dot?
@@ -79,9 +79,8 @@ def get_resource(resource,user,postdata=""):
         except FileNotFoundError:
             return read_file("404.html")
 
-    if postdata:
-        print("{0} requested {1} with post data {2}".format(user.ip,\
-                                                            resource,postdata))
+    if method == "POST":
+        print("{0} requested {1} with post data {2}".format(user.ip,resource,postdata))
     else:
         print("{0} requested {1}".format(user.ip,resource))
 
@@ -92,13 +91,23 @@ def get_resource(resource,user,postdata=""):
 
     elif resource == "create_chatroom":
         chatroom_name = postdata.split("=")[1]
-        print("New chatroom named {0} created by {1}".format(chatroom_name,user))
+        print('New chatroom named "{0}" created by {1}'.format(chatroom_name,user))
         newchatroom = Chatroom(chatroom_name,user)
-        print(chatrooms)
-        return read_file("chatroom.html").format(newchatroom.name) # Somehow redirect them to new chatroom?
-    resource = resource[1:].split("/")
-    chatroom = chatrooms[resource[1]] # Either postmessage or getmessage
+        return read_file("redirect.html").format("/chatroom/{0}".format(newchatroom.name))
 
+    elif resource.startswith("chatroom"): # trying to access chatroom
+        resource = resource.split("/")
+        chatroom_name = resource[1]
+        try:
+            chatroom = chatrooms[chatroom_name]
+        except KeyError:
+            return read_file("redirect.html").format("/") # not a valid chatroom so redirect to main
+        chatroom.enter_chatroom(user)
+        return read_file("chatroom.html").format(chatroom.name)
+
+    print("Resource requested was {0}".format(resource))
+    resource = resource.split("/")
+    chatroom = chatrooms[resource[1]] # Either postmessage or getmessage
     if resource[0] == "message" and postdata: # trying to do some action on a chatroom
 
         if postdata.startswith("/"): # attempt at command
@@ -116,13 +125,11 @@ def get_resource(resource,user,postdata=""):
         chatroom_name = resource[1]
         print('User "{0}" is polling chatroom "{1}"'.format(user.ip,\
                                                             chatroom_name))
-        data = user.get_readqueue(chatroom_name)
-        print('User "{0}" has a readqueue "{1}"'.format(user.ip,data))
-        for a in data:
-            if type(a[1]) != str:
-                a[1] = a[1].name # Turn user objects into names
-        return json.dumps(data)
+        readqueue = user.get_readqueue(chatroom_name)
+        print('User "{0}" has a readqueue "{1}"'.format(user.ip,readqueue))
+        return json.dumps([a.dict() for a in readqueue])
     else:
+        print("Unable to give response - 404'd")
         return read_file("404.html")
 
 def get_or_create_user(ip):
@@ -150,6 +157,7 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
     while 1: # To handle keep-alive connections
         request = str(clientsocket.recv(10000),'utf-8')
         request = request.split("\r\n")
+        method = request[0].split(" ")[0]
         try:
             resource = request[0].split(" ")[1]
         except IndexError:
@@ -169,9 +177,8 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
             clientsocket.send(opener + favicon)
             continue
 
-        request_type = request[0].split(" ")[0]
 
-        if request_type == "POST": # post request
+        if method == "POST": # post request
             # Sometimes when a post request is sent for whatever reason the rest of the data will wait behind, leading to malformed requests
             # Fortunately, we can tell how long the data that was left behind was, because of the content-length header. This waits until
             # the length of the content is equal to the content-length header and then sends the post request off to be handled. This appears
@@ -182,10 +189,10 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
                 newdata = clientsocket.recv(content_length-len(postdata))
                 postdata += str(newdata,'utf-8')
             print("Postdata for request of {0} by {1} was {2}".format(resource,user,postdata))
-            response = get_resource(resource,user,postdata)
+            response = get_resource(resource,user,method,postdata)
 
-        elif request_type == "GET": # Standard get equest
-            response = get_resource(resource,user)
+        elif method == "GET": # Standard get equest
+            response = get_resource(resource,user,method)
 
         else: # not POST or GET
             response = read_file("404.html")

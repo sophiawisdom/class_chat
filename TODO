@@ -5,3 +5,6 @@ Add real chatrooms instead of having a single one
 Implement saved users
 Implement Message object
 Make users able to see recent messages posted in room
+What if the same user opens the same chatroom twice? Kick one out?
+What if a user tries to open a chatroom with the same name as an existing one?
+Chatroom announcement when user enters room

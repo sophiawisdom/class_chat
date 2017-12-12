@@ -23,7 +23,7 @@ function submit_textbox(){
 function write_message(message){
     console.log("write_message was called with message " + message);
     element = document.getElementById("chatbox");
-    text = `<span class="message"> ${message[1]}: ${message[2]} </span> <br>`
+    text = `<span class="message"> ${message["sender"]}: ${message["text"]} </span> <br>`
 //    text = `<tr class="message"> <td> ${message[1]} </td> <td> ${message[2]} </td> </tr>`;
     element.innerHTML += text;
 }
@@ -44,5 +44,6 @@ function update_notifications(){
         unread_messages = 0;
     }
 }
+console.log("chatroom.js loaded")
 setInterval(poll_server,500); // poll server every 1/2 second. Can be tuned.
 setInterval(update_notifications,200);
