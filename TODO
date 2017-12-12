@@ -1,1 +1,7 @@
-Make thing wraparound
+Make messages view wraparound
+Add more commands
+Make TODO etc. not visible to users ## DONE - only files that end with js, html, or css can be statically accessed.
+Add real chatrooms instead of having a single one
+Implement saved users
+Implement Message object
+Make users able to see recent messages posted in room

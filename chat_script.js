@@ -24,7 +24,8 @@ function submit_textbox(){
 function write_message(message){
     console.log("write_message was called with message " + message);
     element = document.getElementById("chatbox");
-    text = `<tr class="message"> <td> ${message[1]} </td> <td> ${message[2]} </td> </tr>`;
+    text = `<span class="message"> ${message[1]}: ${message[2]} </span> <br>`
+//    text = `<tr class="message"> <td> ${message[1]} </td> <td> ${message[2]} </td> </tr>`;
     element.innerHTML += text;
 }
 function write_messages(messages){
