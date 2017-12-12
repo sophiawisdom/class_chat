@@ -1,4 +1,3 @@
-var chatroomname = "test_chatroom"; // Do not hardcode in future
 var global_form;
 var input_box = document.getElementById("text_input");
 var unread_messages = 0;
@@ -8,14 +7,14 @@ input_box.addEventListener('keydown', function(event) {
         submit_textbox();
     }
 });
-document.title = chatroomname;
+document.title = chatroom_name;
 function submit_textbox(){
     var val = input_box.value;
     if (val == ""){
         console.log("Submit textbox called w/o message");
         return;
     }
-    var url = "/postmessage/" + chatroomname;
+    var url = "/message/" + chatroom_name;
     console.log("Url is " + url + "text box value is " + val);
     jQuery.post(url,val);
     input_box.value = "";
@@ -34,14 +33,14 @@ function write_messages(messages){
     messages.forEach(write_message);
 }
 function poll_server(){
-    jQuery.get("/getmessages/" + chatroomname,write_messages,datatype="json");
+    jQuery.get("/message/" + chatroom_name,write_messages,datatype="json");
 }
 function update_notifications(){
     if (document.hidden && unread_messages){
-        document.title = chatroomname + "(" + unread_messages + ")";
+        document.title = chatroom_name + "(" + unread_messages + ")";
     }
     else {
-        document.title = chatroomname;
+        document.title = chatroom_name;
         unread_messages = 0;
     }
 }

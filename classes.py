@@ -1,4 +1,8 @@
 user_number = 0
+chatrooms = {} # {name:room}
+user_number = 0
+users = {} # {addr:[timestamp,user_obj]}
+
 def get_random_name():
     global user_number
     user_number += 1
@@ -33,8 +37,6 @@ class User:
         for message in toremove:
             self.read_queue.remove(message)
         return relevant_messages
-    def send_server_message(self,message_text):
-
     def __repr__(self):
         return self.name
     def __str__(self):

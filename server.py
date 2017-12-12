@@ -7,17 +7,14 @@ import os
 import select
 import subprocess
 import atexit
-from .classes import *
-from .strings import *
+import sys
+from classes import *
+from strings import *
 """with open("saved_users") as file:
     data = file.read().split("\n")
 saved_users = dict([a.split(chr(2500)) for a in data])
 res = subprocess.getoutput("arp -an").split("\n")
 ip_mac_table = {a.split(" ")[1][1:-1]:a.split(" ")[3] for a in res}"""
-users = {} # {addr:[timestamp,user_obj]}
-banned_ips = {}
-chatrooms = {} # {name:room}
-user_number = 0
 def clean_up():
     with open("current_port",'w') as file:
         file.write("0")
@@ -34,7 +31,8 @@ def handle_command(command,user,chatroom,*args):
         newusername = args[0]
         for ip in users:
             if users[ip][1].name == newusername:
-                users
+                user.write_message(Message(server,'Username cannot be changed to {0} because there is already a user with that username'.
+                    format(newusername),chatroom))
         chatroom.write_message(server,'User "{0}" is now known as "{1}"'.\
                                format(oldusername,newusername))
         user.name = newusername
@@ -73,7 +71,8 @@ def handle_command(command,user,chatroom,*args):
         user.send_message([time.time(),server,help_message,"server"])
 
 def get_resource(resource,user,postdata=""):
-    resource = resource if resource != "/" else "index.html" # Static file
+    resource = resource[1:] # Starts with /
+    resource = resource if resource != "" else "index.html" # Static file
     if resource.split(".")[-1] in ['css','html','js']: # What's a more elegant way to say after the last dot?
         try:
             return read_file(resource)
@@ -86,10 +85,21 @@ def get_resource(resource,user,postdata=""):
     else:
         print("{0} requested {1}".format(user.ip,resource))
 
+    if resource == "chatroom_listing":
+        chatroom_listing = [chatrooms[a] for a in chatrooms]
+        chatroom_listing = [[a.name,len(a.users)] for a in chatroom_listing]
+        return json.dumps(chatroom_listing)
+
+    elif resource == "create_chatroom":
+        chatroom_name = postdata.split("=")[1]
+        print("New chatroom named {0} created by {1}".format(chatroom_name,user))
+        newchatroom = Chatroom(chatroom_name,user)
+        print(chatrooms)
+        return read_file("chatroom.html").format(newchatroom.name) # Somehow redirect them to new chatroom?
     resource = resource[1:].split("/")
     chatroom = chatrooms[resource[1]] # Either postmessage or getmessage
 
-    if resource[0] == "postmessage": # trying to do some action on a chatroom
+    if resource[0] == "message" and postdata: # trying to do some action on a chatroom
 
         if postdata.startswith("/"): # attempt at command
             command = postdata[1:].split(" ")
@@ -102,7 +112,7 @@ def get_resource(resource,user,postdata=""):
             print("User {0} has readqueue {1}".format(ip,user[0].read_queue))
         return ''
 
-    elif resource[0] == "getmessages":
+    elif resource[0] == "message":
         chatroom_name = resource[1]
         print('User "{0}" is polling chatroom "{1}"'.format(user.ip,\
                                                             chatroom_name))
@@ -112,8 +122,10 @@ def get_resource(resource,user,postdata=""):
             if type(a[1]) != str:
                 a[1] = a[1].name # Turn user objects into names
         return json.dumps(data)
+    else:
+        return read_file("404.html")
 
-def get_or_create_user(ip)
+def get_or_create_user(ip):
     global users
     if ip in users: # Already seen user before
         user = users[ip][0]
@@ -127,7 +139,6 @@ def get_or_create_user(ip)
         user = User(ip)
         print("New user with IP {0} and name {1}".format(ip,user.name))
         users[ip] = [user,time.time()] # update users table
-    test_chatroom.enter_chatroom(user)     # FOR THE MOMENT
     return user
 
 def handle_connection(clientsocket,addr): # Handles a connection from start to end. Most work is passed off to get_resource
@@ -146,6 +157,7 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
                   format("\n".join(request)))
             if (time.time() - last_error) < 1:
                 print("Time since last error with connection from {0} is {1} so breaking".format(addr[0],time.time()-last_error))
+                clientsocket.close()
                 break
             last_error = time.time()
             continue
@@ -169,6 +181,7 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
             while len(postdata) < content_length:
                 newdata = clientsocket.recv(content_length-len(postdata))
                 postdata += str(newdata,'utf-8')
+            print("Postdata for request of {0} by {1} was {2}".format(resource,user,postdata))
             response = get_resource(resource,user,postdata)
 
         elif request_type == "GET": # Standard get equest
@@ -179,24 +192,28 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
 
         opener = bytes(text_opener.format(len(response)),'utf-8')
         clientsocket.send(opener + bytes(response,'utf-8'))
+
+banned_ips = {}
+server = User("0.0.0.0","server") # Server user - sends system messages etc.
+
 sock = socket.socket()
 try:
     sock.bind(('',80))
-    n = 80
+    port = 80
 except BaseException:
     while 1:
         try:
-            n = random.randint(3000,8000)
-            sock.bind(('',n))
+            port = random.randint(1024,2000)
+            sock.bind(('',port))
             break
         except BaseException:
-            print("failed to bind to port {0}".format(n))
-print("Bound to port {0}".format(n))
+            print("failed to bind to port {0}".format(port))
+print("Bound to port {0}".format(port))
 sock.listen(10)
-server = User("0.0.0.0","server")
-test_chatroom = Chatroom("test_chatroom")
-private_chatroom = Chatroom("private")
-subprocess.getoutput('open -a "Google Chrome" http://localhost:{0}'.format(n))
-while 1:
+
+if sys.platform == "darwin": # We're running on a mac, so we're probably doing interactive editing and want to see the website
+    subprocess.getoutput('open -a "Google Chrome" http://localhost:{0}'.format(port))
+
+while 1: # Main event loop
     clientsocket, addr = sock.accept()
     threading.Thread(target=handle_connection,args=(clientsocket,addr)).start()
