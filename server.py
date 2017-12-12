@@ -79,18 +79,20 @@ def get_resource(resource,user,method,postdata=""):
     else:
         print("{0} requested {1}".format(user.ip,resource))
 
-    if resource == "chatroom_listing":
+    resource = resource.split("/")
+
+    if resource[0] == "chatroom_listing":
         chatroom_listing = [chatrooms[a] for a in chatrooms]
         chatroom_listing = [[a.name,len(a.users)] for a in chatroom_listing]
         return json.dumps(chatroom_listing)
 
-    elif resource == "create_chatroom": # create_chatroom
+    elif resource[0] == "create_chatroom": # create_chatroom
         chatroom_name = postdata.split("=")[1]
         print('New chatroom named "{0}" created by {1}'.format(chatroom_name,user))
         newchatroom = Chatroom(chatroom_name,user)
         return read_file("redirect.html").format("/chatroom/{0}".format(newchatroom.name))
 
-    elif resource.startswith("chatroom"): # trying to access chatroom
+    elif resource[0] == "chatroom": # trying to access chatroom
         resource = resource.split("/")
         chatroom_name = resource[1]
         try:
@@ -100,6 +102,10 @@ def get_resource(resource,user,method,postdata=""):
         if not user in chatroom.users:
             chatroom.enter_chatroom(user)
         return read_file("chatroom.html").format(chatroom.name)
+
+    elif resource[0] == "leave_chatroom":
+        chatroom_to_leave = chatrooms[resource[1]]
+        chatroom_to_leave.leave_chatroom(user)
 
     print("Resource requested was {0}".format(resource))
     resource = resource.split("/")

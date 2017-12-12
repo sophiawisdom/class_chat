@@ -53,20 +53,27 @@ class Chatroom:
         for user in self.users:
 #            if user != orig_user:
             user.send_message(message)
+    def announce(self,text):
+        msg = Message(server,text,self.name)
+        for user in self.users:
+            user.send_message(msg)
     def enter_chatroom(self,new_user):
         if not new_user in self.users:
             self.users.append(new_user)
-            announcement = Message(server,"User {0} has entered the chat".format(new_user.name),self.name)
-            for user in self.users:
-                user.send_message(announcement)
+            self.announce("User {0} has entered the chat".format(new_user.name))
             new_user.enter_chatroom(self)
-            if not new_user in self.users:
-                self.users.append(new_user)
+            self.users.append(new_user)
             context = min(10,len(self.chatlog))
             for a in range(context): # give chatroom context to user
                 new_user.send_message(self.chatlog[context-a])
         else:
             new_user.send_message(Message(server,"You are already in this chat",self.name))
+    def leave_chatroom(self,leaving_user):
+        try:
+            self.users.remove(leaving_user)
+        except ValueError: # user not in users
+            raise UserException("User not in chatroom")
+        self.announce("User {0} has left the chat".format(leaving_user.name))
 class UserException(BaseException):
     pass
 server = User("0.0.0.0","server") # Server user - sends system messages etc.

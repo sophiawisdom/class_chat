@@ -8,6 +8,10 @@ input_box.addEventListener('keydown', function(event) {
     }
 });
 document.title = chatroom_name;
+function handle_close(){
+    // Tell server to exit us from chatroom
+    jQuery.get("/leave_chatroom/" + chatroom_name)
+}
 function submit_textbox(){
     var val = input_box.value;
     if (val == ""){
@@ -24,7 +28,6 @@ function write_message(message){
     console.log("write_message was called with message " + message);
     element = document.getElementById("chatbox");
     text = `<span class="message"> ${message["sender"]}: ${message["text"]} </span> <br>`
-//    text = `<tr class="message"> <td> ${message[1]} </td> <td> ${message[2]} </td> </tr>`;
     element.innerHTML += text;
 }
 function write_messages(messages){
