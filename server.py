@@ -21,6 +21,7 @@ def read_file(filename,options='r'):
         print("FileNotFoundError when looking for file {0}".format(filename))
         return ""
 def handle_command(command,user,chatroom,*args):
+    print("Command {0} was run by user {1}".format(command,user))
     if command == "username":
         oldusername = user.name
         newusername = args[0]
@@ -44,7 +45,7 @@ def handle_command(command,user,chatroom,*args):
             user.bad_login_attempts += 1 # Just to keep track for the moment
             user.send_message(Message(server,"Bad password.",chatroom))
 
-    elif command == "ban": # A semi-vulnerability involved in this is that users
+    elif command == "ban":
         if not user.admin:
             user.send_message(Message(server,"Command not allowed for non-admins. Login as admin using /auth",chatroom))
             return
@@ -64,8 +65,13 @@ def handle_command(command,user,chatroom,*args):
         pass
     elif command == "help":
         user.send_message([time.time(),server,help_message,"server"])
+    elif command == "leave":
+        chatroom.leave_chatroom(user)
+        return json.dumps({"command":"redirect","location":"/"})
+    return ""
 
 def get_resource(resource,user,method,postdata=""):
+    print('User "{0}" requests resource {1} {2}'.format(user,resource,'with postdata "' + postdata + '"' if postdata else ''))
     resource = resource[1:] # Starts with /
     resource = resource if resource != "" else "index.html" # Static file
     if resource.split(".")[-1] in ['css','html','js']: # What's a more elegant way to say after the last dot?
@@ -73,11 +79,6 @@ def get_resource(resource,user,method,postdata=""):
             return read_file(resource)
         except FileNotFoundError:
             return read_file("404.html")
-
-    if method == "POST":
-        print("{0} requested {1} with post data {2}".format(user.ip,resource,postdata))
-    else:
-        print("{0} requested {1}".format(user.ip,resource))
 
     resource = resource.split("/")
 
@@ -88,12 +89,13 @@ def get_resource(resource,user,method,postdata=""):
 
     elif resource[0] == "create_chatroom": # create_chatroom
         chatroom_name = postdata.split("=")[1]
+        if chatroom_name in chatrooms:
+            return read_file("redirect.html").format("/new_chatroom.html")
         print('New chatroom named "{0}" created by {1}'.format(chatroom_name,user))
         newchatroom = Chatroom(chatroom_name,user)
         return read_file("redirect.html").format("/chatroom/{0}".format(newchatroom.name))
 
     elif resource[0] == "chatroom": # trying to access chatroom
-        resource = resource.split("/")
         chatroom_name = resource[1]
         try:
             chatroom = chatrooms[chatroom_name]
@@ -107,8 +109,6 @@ def get_resource(resource,user,method,postdata=""):
         chatroom_to_leave = chatrooms[resource[1]]
         chatroom_to_leave.leave_chatroom(user)
 
-    print("Resource requested was {0}".format(resource))
-    resource = resource.split("/")
     chatroom = chatrooms[resource[1]] # Either postmessage or getmessage
     if resource[0] == "message" and postdata: # trying to do some action on a chatroom
 
@@ -119,16 +119,11 @@ def get_resource(resource,user,method,postdata=""):
         print('User wrote message "{0}" to chatroom "{1}"'.format(\
             postdata,chatroom.name))
         chatroom.write_message(user,postdata)
-        for ip, user in users.items():
-            print("User {0} has readqueue {1}".format(ip,user[0].read_queue))
         return ''
 
     elif resource[0] == "message":
         chatroom_name = resource[1]
-        print('User "{0}" is polling chatroom "{1}"'.format(user.ip,\
-                                                            chatroom_name))
         readqueue = user.get_readqueue(chatroom_name)
-        print('User "{0}" has a readqueue "{1}"'.format(user.ip,readqueue))
         return json.dumps([a.dict() for a in readqueue])
     else:
         print("Unable to give response - 404'd")
@@ -190,7 +185,6 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
             while len(postdata) < content_length:
                 newdata = clientsocket.recv(content_length-len(postdata))
                 postdata += str(newdata,'utf-8')
-            print("Postdata for request of {0} by {1} was {2}".format(resource,user,postdata))
             response = get_resource(resource,user,method,postdata)
 
         elif method == "GET": # Standard get equest
@@ -233,5 +227,10 @@ if sys.platform == "darwin": # We're running on a mac, so we're probably doing i
     subprocess.getoutput('open -a "Google Chrome" http://localhost:{0}'.format(port))
 
 while 1: # Main event loop
-    clientsocket, addr = sock.accept()
+    try:
+        clientsocket, addr = sock.accept()
+    except KeyboardInterrupt:
+        print("Exiting")
+        sock.close()
+        break
     threading.Thread(target=handle_connection,args=(clientsocket,addr)).start()

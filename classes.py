@@ -69,11 +69,16 @@ class Chatroom:
         else:
             new_user.send_message(Message(server,"You are already in this chat",self.name))
     def leave_chatroom(self,leaving_user):
+        print("User {0} has left chatroom {1}".format(leaving_user,self.name))
         try:
             self.users.remove(leaving_user)
         except ValueError: # user not in users
             raise UserException("User not in chatroom")
         self.announce("User {0} has left the chat".format(leaving_user.name))
+    def __repr__(self):
+        return self.name
+    def __str__(self):
+        return self.name
 class UserException(BaseException):
     pass
 server = User("0.0.0.0","server") # Server user - sends system messages etc.

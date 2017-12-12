@@ -13,19 +13,28 @@ function handle_close(){
     jQuery.get("/leave_chatroom/" + chatroom_name)
 }
 function submit_textbox(){
-    var val = input_box.value;
-    if (val == ""){
+    var message = input_box.value;
+    if (message == ""){
         console.log("Submit textbox called w/o message");
         return;
     }
     var url = "/message/" + chatroom_name;
-    console.log("Url is " + url + "text box value is " + val);
-    jQuery.post(url,val);
+    console.log("Url is " + url + "text box value is " + message);
+    jQuery.post(url,message,handle_post_response,"json");
     input_box.value = "";
     input_box.focus();
 }
+function handle_post_response(data){
+    console.log("handle_post_response called with data" + data)
+    console.log(data)
+    if (data['command'] == "redirect"){
+        console.log("Redirected to " + data['location']);
+        window.location.replace(data['location']);
+        return;
+    }
+}
 function write_message(message){
-    console.log("write_message was called with message " + message);
+    console.log(`wrote message ${message['text']} by ${message['sender']}`)
     element = document.getElementById("chatbox");
     text = `<span class="message"> ${message["sender"]}: ${message["text"]} </span> <br>`
     element.innerHTML += text;
@@ -48,5 +57,5 @@ function update_notifications(){
     }
 }
 console.log("chatroom.js loaded")
-setInterval(poll_server,500); // poll server every 1/2 second. Can be tuned.
+setInterval(poll_server,1000); // poll server every 1/2 second. Can be tuned.
 setInterval(update_notifications,200);
