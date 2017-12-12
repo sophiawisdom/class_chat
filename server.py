@@ -10,11 +10,6 @@ import atexit
 import sys
 from classes import *
 from strings import *
-"""with open("saved_users") as file:
-    data = file.read().split("\n")
-saved_users = dict([a.split(chr(2500)) for a in data])
-res = subprocess.getoutput("arp -an").split("\n")
-ip_mac_table = {a.split(" ")[1][1:-1]:a.split(" ")[3] for a in res}"""
 def clean_up():
     with open("current_port",'w') as file:
         file.write("0")
@@ -89,7 +84,7 @@ def get_resource(resource,user,method,postdata=""):
         chatroom_listing = [[a.name,len(a.users)] for a in chatroom_listing]
         return json.dumps(chatroom_listing)
 
-    elif resource == "create_chatroom":
+    elif resource == "create_chatroom": # create_chatroom
         chatroom_name = postdata.split("=")[1]
         print('New chatroom named "{0}" created by {1}'.format(chatroom_name,user))
         newchatroom = Chatroom(chatroom_name,user)
@@ -102,7 +97,8 @@ def get_resource(resource,user,method,postdata=""):
             chatroom = chatrooms[chatroom_name]
         except KeyError:
             return read_file("redirect.html").format("/") # not a valid chatroom so redirect to main
-        chatroom.enter_chatroom(user)
+        if not user in chatroom.users:
+            chatroom.enter_chatroom(user)
         return read_file("chatroom.html").format(chatroom.name)
 
     print("Resource requested was {0}".format(resource))
@@ -199,22 +195,31 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
 
         opener = bytes(text_opener.format(len(response)),'utf-8')
         clientsocket.send(opener + bytes(response,'utf-8'))
+def get_socket():
+    sock = socket.socket()
+
+    if len(sys.argv) > 1: # port argument
+        port = int(sys.argv[1])
+        try:
+            sock.bind(('',port))
+            return sock, port
+        except BaseException:
+            pass      
+    try:
+        sock.bind(('',80))
+        port = 80
+    except BaseException:
+        while 1:
+            try:
+                port = random.randint(1024,2000)
+                sock.bind(('',port))
+                break
+            except BaseException:
+                print("failed to bind to port {0}".format(port))
+    return sock, port
 
 banned_ips = {}
-server = User("0.0.0.0","server") # Server user - sends system messages etc.
-
-sock = socket.socket()
-try:
-    sock.bind(('',80))
-    port = 80
-except BaseException:
-    while 1:
-        try:
-            port = random.randint(1024,2000)
-            sock.bind(('',port))
-            break
-        except BaseException:
-            print("failed to bind to port {0}".format(port))
+sock, port = get_socket()
 print("Bound to port {0}".format(port))
 sock.listen(10)
 

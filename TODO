@@ -1,10 +1,42 @@
-Make messages view wraparound
-Add more commands
+Chatroom announcement when user enters room ## DONE - took like 2 minutes
+
 Make TODO etc. not visible to users ## DONE - only files that end with js, html, or css can be statically accessed.
-Add real chatrooms instead of having a single one
+
+Implement Message object ## DONE - not super useful
+
+Make users able to see recent messages posted in room ## DONE - context value is maximum of 10
+
+What if the same user opens the same chatroom twice? Kick one out? ## DONE - second user simply not allowed to enter. IDK what happens in the JS but the new user is not put on the users list.
+
+Add real chatrooms instead of having a single one ## DONE Took for fucking ever but finally works.
+
+
+
+Make chatroom view not look shitty
+	I'm bad at HTML. This presents difficulties.
+
+Add more commands
+	/get_mac {username} or /get_ip {username}
+
+	/kick {username}
+	    just remove them from users table?
 Implement saved users
-Implement Message object
-Make users able to see recent messages posted in room
-What if the same user opens the same chatroom twice? Kick one out?
+	This would have to be based on mac addresses, not IP addresses. This would imply an IP -> Mac translation when encountering the user and then another one to match against mac. I still don't know how to do IP -> mac translations, so this is awkward.
+
 What if a user tries to open a chatroom with the same name as an existing one?
-Chatroom announcement when user enters room
+
+Give chatroom creators authority
+	Should this be the case? Maybe I should just be the sole authority arbitrating out of the passwords file
+
+Send PM's?
+    Maybe this could work through the same mechanism that server messages work on
+
+Protect against Javascript/HTML injection
+    I believe anyone should be able to just write html onto other people's computers, effectively. This isn't a huge deal - I think I'm fine with it being there. This is on a protected local network, and it's just JS/HTML, by design nothing too harmful
+
+More intuitive interface to change name
+    simple to explain, harder to do
+
+Leave chat at page close
+
+When username is changed, no message is sent to original user at present

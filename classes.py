@@ -1,13 +1,3 @@
-user_number = 0
-chatrooms = {} # {name:room}
-user_number = 0
-users = {} # {ip:[timestamp,user_obj]}
-import time
-
-def get_random_name():
-    global user_number
-    user_number += 1
-    return "User {0}".format(user_number)
 class Message:
     def __init__(self,sender,text,chatroom,receiver = None,**kwargs):
         self.time = time.time()  # integer timestamp
@@ -63,9 +53,29 @@ class Chatroom:
         for user in self.users:
 #            if user != orig_user:
             user.send_message(message)
-    def enter_chatroom(self,user):
-        user.enter_chatroom(self)
-        if not user in self.users:
-            self.users.append(user)
+    def enter_chatroom(self,new_user):
+        if not new_user in self.users:
+            self.users.append(new_user)
+            announcement = Message(server,"User {0} has entered the chat".format(new_user.name),self.name)
+            for user in self.users:
+                user.send_message(announcement)
+            new_user.enter_chatroom(self)
+            if not new_user in self.users:
+                self.users.append(new_user)
+            context = min(10,len(self.chatlog))
+            for a in range(context): # give chatroom context to user
+                new_user.send_message(self.chatlog[context-a])
+        else:
+            new_user.send_message(Message(server,"You are already in this chat",self.name))
 class UserException(BaseException):
     pass
+server = User("0.0.0.0","server") # Server user - sends system messages etc.
+user_number = 0
+chatrooms = {} # {name:room}
+user_number = 0
+users = {} # {ip:[timestamp,user_obj]}
+import time
+def get_random_name():
+    global user_number
+    user_number += 1
+    return "User {0}".format(user_number)
