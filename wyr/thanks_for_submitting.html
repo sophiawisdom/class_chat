@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<body>
+<form action="/get_question">
+  <input type="checkbox" name="0" value="1" {1}> Family<br>
+  <input type="checkbox" name="1" value="1" {2}> Friends<br>
+  <input type="checkbox" name="2" value="1" {3}> Discussion
+  <input type="submit" value="Get new question">
+</form>
+<h3> {0} </h3>
+<h3> Your question has been submitted, thanks for submitting to the database! </h3>
+<br>
+<br>
+<br>
+<h5> Want to submit a question? Do so below and it will be added to the database. </h5>
+<form action="/submit_question">
+  <input type="radio" name="q_type" value="Friends"> Friends<br>
+  <input type="radio" name="q_type" value="Family"> Family<br>
+  <input type="radio" name="q_type" value="Discussion"> Discussion
+  <input type="text" name="discussion_content">
+  <input type="submit" value="Submit question">
+</form>
+<br>
+<br>
+<form action="/dump_questions">
+  <input type="submit" value="Dump questions list">
+</form>
+</body>
+</html>

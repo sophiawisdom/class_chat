@@ -1,0 +1,34 @@
+Make it so page loads quickly when reloading on same preferences
+	- FUCK YEAH PROBLEM SOLVED
+	- Same problem as favicon - chrome prob. thinks we still want to talk.
+	- Added clientsocket.close() when function exits.
+Expand questions list
+	- Wouldyourather site either.io scraping
+		-Use tags somehow. I think it's just an archive.
+		-Normie trash for the most part. Should be edgy/weird
+	- /r/wouldyourather
+		-top 200 put into database
+	- Other side of question - trim lower quality questions?
+Enter to reload questions
+Figure out font/text - mostly done
+	- Still looks like shit. How can I improve? Codecademy CSS?
+Enable ability to dump questions for people
+	- DONE
+Enable rating from 1 to 5, weight choices by rating.
+	- Is there a star based input option in html5?
+Fix favicon issue FIXED
+	- why does it take so long?
+	- When I end server while it says favicon is loading, favicon loads.
+	- So it's probably something to do with not telling server it's ended.
+	- Added line clientsocket.close() to end, fixed problem.
+Apostrophes in discussion list
+	- Look weird as hell - has to do with straight apostrophe vs UTF style
+	apostrophe. Not sure how to fix.
+	- Fixed in interpret.py by replacing all weird apostrophes with normal
+Add ability to respond to questions
+	- First or second radio buttons
+	- Mostly done, just have to add HTML
+Comment more
+	- 
+Mostly function based for transport to pythonanywhere
+	- Mostly done
