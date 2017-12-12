@@ -6,6 +6,7 @@ import random
 import interpret
 import sys
 import atexit
+from . import *
 run_server = 1
 text_opener = b"""HTTP/1.1 200 OK
 Content-Type: text

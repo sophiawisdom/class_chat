@@ -47,6 +47,7 @@ class Chatroom:
             self.users = []
         self.name = name
         self.chatlog = [] # chatlog: [timestamp,user,text,chatroom name] etc.
+        self.wyr_exclude = [] # for "would you rather" questions.
     def write_message(self,orig_user,text):
         message = Message(orig_user,text,self.name)
         self.chatlog.append(message)

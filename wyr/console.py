@@ -1,5 +1,5 @@
 import sys
-import interpret
+from wyr import interpret
 pref = [int(a) for a in sys.argv[1:4]]
 print(pref)
 if len(pref) != 3:

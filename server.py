@@ -8,6 +8,7 @@ import select
 import subprocess
 import atexit
 import sys
+import wyr
 from classes import *
 from strings import *
 def clean_up():
@@ -29,8 +30,10 @@ def handle_command(command,user,chatroom,*args):
             if users[ip][0].name == newusername:
                 user.write_message(Message(server,'Username cannot be changed to {0} because there is already a user with that username'.
                     format(newusername),chatroom))
+                return
+        print('User "{0}" is now known as "{1}"'.format(oldusername,newusername))
         for chatroom in user.active_chatrooms:
-            chatroom.write_message(server,'User "{0}" is now known as "{1}"'.format(oldusername,newusername))
+            chatroom.announce('User "{0}" is now known as "{1}"'.format(oldusername,newusername))
         user.name = newusername
 
     elif command == "auth":
@@ -68,6 +71,11 @@ def handle_command(command,user,chatroom,*args):
     elif command == "leave":
         chatroom.leave_chatroom(user)
         return json.dumps({"command":"redirect","location":"/"})
+    elif command == "wyr":
+        prefs = [1,1,0] # Add ability to choose?
+        question = wyr.get_question(prefs,chatroom.wyr_exclude)
+        chatroom.wyr_exclude.append(question)
+        chatroom.announce(question)
     return ""
 
 def get_resource(resource,user,method,postdata=""):
