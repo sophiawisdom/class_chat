@@ -1,5 +1,5 @@
 class Message:
-    def __init__(self,sender,text,chatroom,receiver = None,**kwargs):
+    def __init__(self,sender,text,chatroom,**kwargs):
         self.time = time.time()  # integer timestamp
         self.sender = sender         # User object of sender
         self.text = text         # Text content of message
@@ -21,12 +21,15 @@ class User:
         self.admin = False
         self.unban_time = 0
     def send_message(self,message):
+        if type(message) != Message:
+            raise UserException("Message type needs to be Message")
         self.read_queue.append(message)
-    def get_readqueue(self,chatroom_name):
+    def get_readqueue(self,chatroom):
         relevant_messages = []
         toremove = []
         for message in self.read_queue:
-            if message.chatroom == chatroom_name:
+            if message.chatroom == chatroom:
+                print("Message {0} was sent to {1}".format(message,self))
                 relevant_messages.append(message)
                 toremove.append(message)
         for message in toremove:
@@ -40,6 +43,7 @@ class User:
         return self.name
 class Chatroom:
     def __init__(self,name,creator=None):
+        print("Chatroom {0} was created by {1}".format(name,creator))
         chatrooms[name] = self # Log existence for finding later
         if creator:
             self.users = [creator]
@@ -49,17 +53,18 @@ class Chatroom:
         self.chatlog = [] # chatlog: [timestamp,user,text,chatroom name] etc.
         self.wyr_exclude = [] # for "would you rather" questions.
     def write_message(self,orig_user,text):
-        message = Message(orig_user,text,self.name)
+        message = Message(orig_user,text,self)
         self.chatlog.append(message)
         for user in self.users:
 #            if user != orig_user:
             user.send_message(message)
     def announce(self,text):
-        msg = Message(server,text,self.name)
+        msg = Message(server,text,self)
         for user in self.users:
             user.send_message(msg)
     def enter_chatroom(self,new_user):
         if not new_user in self.users:
+            print("User {0} has entered chatroom {1}".format(new_user.name,self.name))
             self.users.append(new_user)
             self.announce("User {0} has entered the chat".format(new_user.name))
             new_user.enter_chatroom(self)

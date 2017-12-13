@@ -14,10 +14,23 @@ Leave chat at page close ## DONE
 
 Add command to leave chat ## DONE
 
+Add option to broadcast WYR questions to chat? ## DONE
+
+When username is changed, no message is sent to original user at present ## DONE - problem was due to users not being entered in chatrooms they created
+
 
 
 Make chatroom view not look shitty
 	I'm bad at HTML. This presents difficulties.
+
+More intuitive interface to change name
+    simple to explain, harder to do
+
+Implement button to leave chatroom
+
+Mention time posted? Hover to get time posted perhaps?
+
+
 
 Add more commands
 	/get_mac {username} or /get_ip {username}
@@ -38,19 +51,8 @@ Send PM's?
 Protect against Javascript/HTML injection
     I believe anyone should be able to just write html onto other people's computers, effectively. This isn't a huge deal - I think I'm fine with it being there. This is on a protected local network, and it's just JS/HTML, by design nothing too harmful
 
-More intuitive interface to change name
-    simple to explain, harder to do
-
-When username is changed, no message is sent to original user at present
-
 Persist chatrooms?
 
 Allow hidden chatrooms?
 
 Browse older messages on chatrooms
-
-Mention time posted? Hover to get time posted perhaps?
-
-Implement button to leave chatroom
-
-Add option to broadcast WYR questions to chat?

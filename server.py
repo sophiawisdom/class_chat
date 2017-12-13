@@ -32,6 +32,7 @@ def handle_command(command,user,chatroom,*args):
                     format(newusername),chatroom))
                 return
         print('User "{0}" is now known as "{1}"'.format(oldusername,newusername))
+        print("Active chatrooms: {0}".format(user.active_chatrooms))
         for chatroom in user.active_chatrooms:
             chatroom.announce('User "{0}" is now known as "{1}"'.format(oldusername,newusername))
         user.name = newusername
@@ -64,18 +65,28 @@ def handle_command(command,user,chatroom,*args):
             banned_ips[user_to_ban.ip] = time.time() + int(args[1])
         else: # unable to find username
             user.send_message(Message(server,"Unable to find user {0}".format(username_to_ban),chatroom))
+
     elif command == "get_mac": # implement this later
         pass
+
     elif command == "help":
-        user.send_message([time.time(),server,help_message,"server"])
+        print(type(chatroom))
+        msg = Message(server,help_message.replace("\n","<br>"),chatroom)
+        user.send_message(msg)
+
     elif command == "leave":
         chatroom.leave_chatroom(user)
         return json.dumps({"command":"redirect","location":"/"})
+
     elif command == "wyr":
         prefs = [1,1,0] # Add ability to choose?
         question = wyr.get_question(prefs,chatroom.wyr_exclude)
         chatroom.wyr_exclude.append(question)
         chatroom.announce(question)
+
+    else: # unable to interpret command
+        msg = Message(server,help_message.replace("\n","<br>"),chatroom)
+        user.send_message(msg)
     return ""
 
 def get_resource(resource,user,method,postdata=""):
@@ -101,6 +112,7 @@ def get_resource(resource,user,method,postdata=""):
             return read_file("redirect.html").format("/new_chatroom.html")
         print('New chatroom named "{0}" created by {1}'.format(chatroom_name,user))
         newchatroom = Chatroom(chatroom_name,user)
+        user.enter_chatroom(newchatroom)
         return read_file("redirect.html").format("/chatroom/{0}".format(newchatroom.name))
 
     elif resource[0] == "chatroom": # trying to access chatroom
@@ -131,7 +143,7 @@ def get_resource(resource,user,method,postdata=""):
 
     elif resource[0] == "message":
         chatroom_name = resource[1]
-        readqueue = user.get_readqueue(chatroom_name)
+        readqueue = user.get_readqueue(chatroom)
         return json.dumps([a.dict() for a in readqueue])
     else:
         print("Unable to give response - 404'd")

@@ -57,5 +57,5 @@ function update_notifications(){
     }
 }
 console.log("chatroom.js loaded")
-setInterval(poll_server,1000); // poll server every 1/2 second. Can be tuned.
+setInterval(poll_server,200); // poll server every 1/5 second. Can be tuned.
 setInterval(update_notifications,200);
