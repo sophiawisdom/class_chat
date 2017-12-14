@@ -8,6 +8,9 @@ import select
 import subprocess
 import atexit
 import sys
+import hashlib
+import base64
+
 import wyr
 from classes import *
 from strings import *
@@ -165,6 +168,17 @@ def get_or_create_user(ip):
         users[ip] = [user,time.time()] # update users table
     return user
 
+def get_websock_key(client_key): # Magic process so that the server proves that it understands websocket protocol
+    magic_string = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+    return base64.b64encode(hashlib.sha1(bytes(client_key + magic_string,'utf-8')).digest())
+
+def handle_websock(clientsocket, addr, request, headers):
+    # Taking guidance from https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
+    key = get_websock_key(headers["Sec-WebSocket-Key"])
+    response = websocket_resp.format(key).replace("\n","\r\n")
+    clientsocket.send(bytes(response,'utf-8'))
+    resp = clientsocket.recv(1000)
+
 def handle_connection(clientsocket,addr): # Handles a connection from start to end. Most work is passed off to get_resource
     try:
         user = get_or_create_user(addr[0])
@@ -174,20 +188,22 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
     while 1: # To handle keep-alive connections
         request = str(clientsocket.recv(10000),'utf-8')
         request = request.split("\r\n")
-        method = request[0].split(" ")[0]
-        try:
-            resource = request[0].split(" ")[1]
-        except IndexError:
-            print("Failed to get resource from request \n{0}".\
-                  format("\n".join(request)))
-            if (time.time() - last_error) < 1:
-                print("Time since last error with connection from {0} is {1} so breaking".format(addr[0],time.time()-last_error))
-                clientsocket.close()
-                break
-            last_error = time.time()
-            continue
 
-        if resource == "/favicon.ico":
+        top = request[0]
+        method, resource, protocol = top.split(" ")
+
+        headers = {}
+        for line in request:
+            try:
+                split = line.split(": ")
+                headers[split[0].lower()] = split[1]
+            except IndexError: # no : in line, so not header
+                pass
+
+        if "Sec-WebSocket-Key" in headers: # WebSocket connection
+            handle_websock(clientsocket,addr,request,headers) # I don't like adding to the call stack, but whatever I guess
+
+        if resource == "/favicon.ico": # Special handling due to MIME type
             with open("favicon.ico",'rb') as file:
                 favicon = file.read()
             opener = bytes(image_opener.format(len(favicon)),'utf-8')
@@ -199,15 +215,15 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
             # Sometimes when a post request is sent for whatever reason the rest of the data will wait behind, leading to malformed requests
             # Fortunately, we can tell how long the data that was left behind was, because of the content-length header. This waits until
             # the length of the content is equal to the content-length header and then sends the post request off to be handled. This appears
-            # to solve all the problems that previously existed with post requests.
-            content_length = int(request[3][16:])
-            postdata = request[-1]
+            # to solve the problems that previously existed with post requests.
+            content_length = int(headers['content-length']) # Breaks on firefox - perhaps turn request into dict of {header: value}?
+            postdata = request[-1] # better way? How to know which header is last?
             while len(postdata) < content_length:
                 newdata = clientsocket.recv(content_length-len(postdata))
                 postdata += str(newdata,'utf-8')
             response = get_resource(resource,user,method,postdata)
 
-        elif method == "GET": # Standard get equest
+        elif method == "GET": # Standard get request
             response = get_resource(resource,user,method)
 
         else: # not POST or GET

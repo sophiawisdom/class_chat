@@ -16,3 +16,7 @@ help_message = """Available commands:
 For Admins Only:
 /ban user time - Ban user for specified number of seconds
 """
+websocket_resp = """HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: {0}"
