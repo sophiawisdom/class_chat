@@ -65,13 +65,12 @@ class Chatroom:
     def enter_chatroom(self,new_user):
         if not new_user in self.users:
             print("User {0} has entered chatroom {1}".format(new_user.name,self.name))
-            self.users.append(new_user)
             self.announce("User {0} has entered the chat".format(new_user.name))
             new_user.enter_chatroom(self)
             self.users.append(new_user)
             context = min(10,len(self.chatlog))
             for a in range(context): # give chatroom context to user
-                new_user.send_message(self.chatlog[context-a])
+                new_user.send_message(self.chatlog[context-a - 1])
         else:
             new_user.send_message(Message(server,"You are already in this chat",self.name))
     def leave_chatroom(self,leaving_user):

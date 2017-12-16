@@ -19,4 +19,5 @@ For Admins Only:
 websocket_resp = """HTTP/1.1 101 Switching Protocols
 Upgrade: websocket
 Connection: Upgrade
-Sec-WebSocket-Accept: {0}"
+Sec-WebSocket-Accept: {0}
+"""

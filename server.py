@@ -10,6 +10,7 @@ import atexit
 import sys
 import hashlib
 import base64
+from IPython import embed
 
 import wyr
 from classes import *
@@ -170,14 +171,17 @@ def get_or_create_user(ip):
 
 def get_websock_key(client_key): # Magic process so that the server proves that it understands websocket protocol
     magic_string = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-    return base64.b64encode(hashlib.sha1(bytes(client_key + magic_string,'utf-8')).digest())
+    return str(base64.b64encode(hashlib.sha1(bytes(client_key + magic_string,'utf-8')).digest()),'utf-8')
 
 def handle_websock(clientsocket, addr, request, headers):
     # Taking guidance from https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
-    key = get_websock_key(headers["Sec-WebSocket-Key"])
+    key = get_websock_key(headers["sec-websocket-key"])
     response = websocket_resp.format(key).replace("\n","\r\n")
+    print('Websocket response: \n"{0}"'.format(response))
     clientsocket.send(bytes(response,'utf-8'))
+    print("Waiting for the response from the websocket")
     resp = clientsocket.recv(1000)
+    print("Response from websocket: ",resp)
 
 def handle_connection(clientsocket,addr): # Handles a connection from start to end. Most work is passed off to get_resource
     try:
@@ -185,12 +189,15 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
     except UserException: # Only happens when user is banned
         clientsocket.send(read_file('banned.html','rb'))
     last_error = 0
-    while 1: # To handle keep-alive connections
+    while 1 and not shutdown: # To handle keep-alive connections
         request = str(clientsocket.recv(10000),'utf-8')
         request = request.split("\r\n")
 
         top = request[0]
-        method, resource, protocol = top.split(" ")
+        try:
+            method, resource, protocol = top.split(" ")
+        except ValueError:
+            continue
 
         headers = {}
         for line in request:
@@ -200,7 +207,8 @@ def handle_connection(clientsocket,addr): # Handles a connection from start to e
             except IndexError: # no : in line, so not header
                 pass
 
-        if "Sec-WebSocket-Key" in headers: # WebSocket connection
+        if "sec-websocket-key" in headers: # WebSocket connection
+            print("Delegating to websocket")
             handle_websock(clientsocket,addr,request,headers) # I don't like adding to the call stack, but whatever I guess
 
         if resource == "/favicon.ico": # Special handling due to MIME type
@@ -261,12 +269,13 @@ sock.listen(10)
 
 if sys.platform == "darwin": # We're running on a mac, so we're probably doing interactive editing and want to see the website
     subprocess.getoutput('open -a "Google Chrome" http://localhost:{0}'.format(port))
+shutdown = False
 
 while 1: # Main event loop
     try:
         clientsocket, addr = sock.accept()
     except KeyboardInterrupt:
-        print("Exiting")
-        sock.close()
+        shutdown = True
+        embed()
         break
     threading.Thread(target=handle_connection,args=(clientsocket,addr)).start()

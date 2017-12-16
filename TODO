@@ -56,3 +56,6 @@ Persist chatrooms?
 Allow hidden chatrooms?
 
 Browse older messages on chatrooms
+
+Implement Websockets
+	This will take a while
